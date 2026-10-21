@@ -1,0 +1,19 @@
+bibentry(
+  bibtype = "Unpublished",
+  title = "A Nonparametric Test of Spatial Independence on Neighbourhood Graphs",
+  author = person("Emad", "Ashtari Nezhad"),
+  year = "2026",
+  note = "Manuscript",
+  textVersion = paste("Ashtari Nezhad, E. (2026).",
+                      "A Nonparametric Test of Spatial Independence on Neighbourhood Graphs. Manuscript.")
+)
+bibentry(
+  bibtype = "Manual",
+  title = "ivspatial: Nonparametric Tests of Spatial Independence",
+  author = person("Emad", "Ashtari Nezhad"),
+  year = "2026",
+  note = paste("R package version", meta$Version),
+  url = "https://github.com/emaad7/ivspatial-r",
+  textVersion = paste0("Ashtari Nezhad, E. (2026). ivspatial: Nonparametric Tests of Spatial Independence. ",
+                       "R package version ", meta$Version, ". https://github.com/emaad7/ivspatial-r")
+)

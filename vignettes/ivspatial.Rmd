@@ -1,0 +1,182 @@
+---
+title: "ivspatial: user guide"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{ivspatial: user guide}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+has_sf <- requireNamespace("sf", quietly = TRUE)
+```
+
+Nonparametric tests of spatial independence on neighbourhood graphs. Companion software to E. Ashtari Nezhad, *A nonparametric test of spatial independence on neighbourhood graphs*. A Python version with
+the same functions and output is on PyPI (`pip install ivspatial`).
+
+## 1. What the package does
+
+`ivspatial` tests whether the values of a variable observed at spatial units
+(cells of a grid, polygons such as counties, irregularly located points, or the
+nodes of a network) are independent and identically distributed (i.i.d.)
+across the units. The tests are **rank based and exact**: under independence
+the P-value is valid for every sample size, every graph and every continuous
+distribution, with no weight matrix, bandwidth or model to choose. The package
+reports
+
+* the P-value of the proposed **combined test C4** and of its four
+  components: **T_V(4,3)**, which sees dependence among a site and two of its
+  neighbours, including dependence that is invisible in every pair;
+  **T_V(4,2)**, pairs with finely resolved tails; **RM**, the Moran statistic of
+  the ranks (level); and **RS**, the Moran statistic of the squared ranks
+  (scale);
+* asymptotic P-values from the explicit weighted chi-square limits;
+* seven **standardized features**, which tell whether the dependence is in the
+  level, in the scale or between neighbours;
+* **maps** of local feature contributions, which show where the dependence
+  occurs;
+* a **data-driven choice of the resolution**, statistics at **several spatial
+  lags**, **screening** of many variables with false discovery rate control,
+  and tests for **regression residuals**.
+
+## 2. Two ways to use it
+
+* **The window (no programming).** `ivspatial_app()` opens the graphical
+  interface in the browser: open a table or a polygon file (or an example),
+  build the neighbourhood graph, pick a variable and press *Run test*. Maps,
+  the null distribution and this guide are in their own tabs.
+* **R code**, shown below. Both give the same results.
+
+## 3. The neighbourhood graph
+
+The neighbourhood of a site is the site and its neighbours; the graph says
+which sites are considered close.
+
+| Data | Function | Typical choice |
+|---|---|---|
+| points | `knn_graph(xy, k)` | k = 4 to 6 |
+| points | `delaunay_graph(xy)` (package deldir) | contiguity of Voronoi cells |
+| points | `distance_band_graph(xy, radius)` | check that few sites are isolated |
+| grid | `lattice_graph(nrow, ncol)`, `lattice_from_indices(row, col)` | rook (4 neighbours) |
+| polygons | `polygon_graph(x, "queen")` (package sf) | queen |
+| network | `graph_from_edges(i, j)`, `graph_from_neighbors(nb)` | the links |
+
+```{r}
+library(ivspatial)
+g <- lattice_from_indices(mercer_hall$row, mercer_hall$col, "rook")
+g
+```
+
+## 4. Testing one variable
+
+```{r}
+res <- spatial_test(mercer_hall$grain, g, B = 999, seed = 1, label = "grain")
+res
+```
+
+* **C4** is the proposed test: a P-value below the level means that the values
+  are not i.i.d. across the sites. The smallest possible P-value is
+  1/(B + 1); use B = 9999 (the default) for reporting.
+* The **components** show which aspect carries the evidence. The
+  **asymptotic** P-values use the weighted chi-square limit and agree with the
+  exact ones in large samples.
+* The **standardized features** are approximately standard normal under
+  independence. Here `c.lin|n.lin` and `n.lin^2` are large: plots resemble
+  their neighbours in level, while the scale features are small.
+
+The elements of the result can be used directly:
+
+```{r}
+res$p_value
+res$components[, c("name", "statistic", "p_value")]
+as.data.frame(res)[, 1:5]
+```
+
+## 5. Points, residuals and many variables
+
+```{r}
+gk <- knn_graph(cbind(baltimore$X, baltimore$Y), k = 4)
+spatial_test(log(baltimore$PRICE), gk, B = 999, seed = 1, features = FALSE)
+```
+
+Residuals of a regression with exogenous regressors are tested without any
+correction (not for spatial-lag models, in which y is regressed on its own
+spatial lag):
+
+```{r}
+r <- residual_test(log(baltimore$PRICE), baltimore[, c("NROOM", "NBATH", "SQFT", "AGE")], gk,
+                   B = 999, seed = 1)
+r$p_value
+r$features
+```
+
+Several variables on the same graph share one table of random rank
+arrangements, and the P-values are adjusted by the Benjamini-Hochberg method:
+
+```{r}
+screen_variables(mercer_hall, g, columns = c("grain", "straw"), B = 999, seed = 1)
+```
+
+## 6. Polygons
+
+```{r, eval = has_sf}
+nc <- read_polygons(system.file("shape/nc.shp", package = "sf"))
+gq <- polygon_graph(nc, "queen")
+gq
+spatial_test(1000 * nc$SID79 / nc$BIR79, gq, B = 999, seed = 1, features = FALSE)
+```
+
+## 7. Maps of local features
+
+Every feature is a scaled sum of local contributions, one per site, each with
+mean 0 and variance 1 under independence. Mapping them shows where a feature
+receives its contribution, as local indicators of spatial association do for
+Moran's I. The maps are descriptive, not tests.
+
+```{r, fig.width = 9, fig.height = 3.4}
+map_local(mercer_hall$grain, lattice_graph(20, 25))
+```
+
+`local_features(x, g)` returns the contributions as a data frame.
+
+## 8. Data-driven resolution and spatial lags
+
+With `resolution = "auto"` the data choose among T_V(d, s), d = 2 to 6,
+s = 2, 3, by the minimum-P rule; the selection is repeated in every random
+rank arrangement, so the P-value is exact after selection. `"schwarz"` uses a
+penalized choice that prefers simple statistics. With `lags = 2` the
+components are also computed for the neighbours at graph distance two.
+
+```{r}
+a <- spatial_test(mercer_hall$straw, g, B = 499, seed = 1, resolution = "auto", features = FALSE,
+                  asymptotic = FALSE)
+a$selected
+a$p_value
+```
+
+## 9. The null limit
+
+Under independence T_V(d, s) converges to a weighted sum of chi-square
+variables with one degree of freedom; the weights are the eigenvalues of the
+exact covariance matrix of the features on the graph.
+
+```{r}
+null_limit(g, d = 4, s = 2, value = 35)
+```
+
+## 10. Notes
+
+* The null hypothesis is that the values are i.i.d. A smooth trend or
+  heteroskedasticity is detected as dependence; model the trend and test the
+  residuals if needed.
+* Missing values are not allowed: remove the incomplete sites and build the
+  graph for the remaining ones.
+* Ties (discrete data) are broken at random, which keeps the tests exact.
+* The user guide with screenshots of the window: `ivspatial_guide()`.
+
+## Reference
+
+Ashtari Nezhad, E. (2026). A nonparametric test of spatial independence on neighbourhood graphs. Manuscript.

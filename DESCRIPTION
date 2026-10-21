@@ -1,0 +1,34 @@
+Package: ivspatial
+Type: Package
+Title: Nonparametric Tests of Spatial Independence
+Version: 1.0.0
+Authors@R: person("Emad", "Ashtari Nezhad", email = "emaad7@gmail.com",
+    role = c("aut", "cre", "cph"), comment = c(ORCID = "0009-0009-6779-4742"))
+Description: Rank-based tests of the hypothesis that the values of a
+    variable observed at spatial units (grid cells, polygons such as
+    counties, irregularly located points or the nodes of a network) are
+    independent and identically distributed. The values are replaced by
+    quantile classes; orthogonal features compare the class of every site
+    with those of its neighbours, in pairs and in triples, on an arbitrary
+    neighbourhood graph. The combined test is calibrated exactly by random
+    rank arrangements, so its P-value is valid for every sample size, every
+    graph and every continuous distribution. The package also gives the
+    explicit weighted chi-square null limits, standardized features that show
+    whether the dependence is in the level or in the scale, local feature
+    contributions for maps, a data-driven choice of the resolution with exact
+    post-selection calibration, several spatial lags, tests for regression
+    residuals, the screening of many variables with false discovery rate
+    control, and a graphical interface. The procedure is that of Ashtari
+    Nezhad, A Nonparametric Test of Spatial Independence on Neighbourhood Graphs (manuscript).
+License: MIT + file LICENSE
+URL: https://github.com/emaad7/ivspatial-r, https://github.com/emaad7/ivspatial
+BugReports: https://github.com/emaad7/ivspatial-r/issues
+Depends: R (>= 3.5.0)
+Imports: stats, utils, tools, methods, graphics, grDevices, Matrix, shiny
+Suggests: deldir, sf, spdep, readxl, knitr, rmarkdown, testthat (>= 3.0.0)
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = FALSE)
+RoxygenNote: 7.3.1
